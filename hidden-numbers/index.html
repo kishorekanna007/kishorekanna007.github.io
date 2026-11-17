@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hidden Numbers</title>
+<meta name="description" content="A free picture puzzle. Find every number hidden in the scene: some are bold, some are faded, some blend into trees, rocks and sky.">
+<meta property="og:title" content="Hidden Numbers">
+<meta property="og:description" content="Free picture puzzle. How many hidden numbers can you find?">
+<meta property="og:type" content="website">
+<link rel="icon" href="../favicon.png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+.foot{max-width:1260px;margin:0 auto;padding-block:0 28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));font-size:13px;color:var(--muted)}
+.foot a{color:inherit}
+</style>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: puzzle picture is the hero on the left, a single scorecard column on the right; stacks on phones. */
+:root{
+  --paper:#EDF1F4; --panel:#FFFFFF; --ink:#17212B; --muted:#576574; --line:#D0D8E0;
+  --accent:#D48C0B; --accent-soft:#F8E6BE; --on-accent:#1C1400; --teal:#1D867A; --miss:#C3354A;
+  --display:"Bricolage Grotesque","Arial Black",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0F141A; --panel:#17202A; --ink:#E5EBF0; --muted:#93A1AF; --line:#2A3644;
+  --accent:#F2B33D; --accent-soft:#3A2E14; --on-accent:#1C1400; --teal:#45C4B4; --miss:#F07285; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0F141A; --panel:#17202A; --ink:#E5EBF0; --muted:#93A1AF; --line:#2A3644;
+  --accent:#F2B33D; --accent-soft:#3A2E14; --on-accent:#1C1400; --teal:#45C4B4; --miss:#F07285; color-scheme:dark}
+
+body{background:var(--paper);color:var(--ink);font:15px/1.5 var(--body)}
+.page{max-width:1260px;margin:0 auto;padding-block:22px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:18px}
+
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px 24px}
+.brand{position:relative;min-width:0}
+.brand h1{position:relative;margin:0;font:800 clamp(32px,5.4vw,56px)/1 var(--display);letter-spacing:-.025em;text-wrap:balance;z-index:1}
+.ghost{position:absolute;left:62%;top:-.28em;font:800 clamp(64px,10vw,112px)/1 var(--display);color:var(--line);transform:rotate(-16deg);z-index:0;user-select:none;pointer-events:none}
+.meta{position:relative;z-index:1;margin:8px 0 0;color:var(--muted);font-size:14px}
+.meta b{color:var(--ink);font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums}
+
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--panel)}
+.seg button{border:0;background:transparent;padding:7px 14px;border-radius:999px;font:700 14px var(--body);color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 16px;border-radius:999px;font:700 14px var(--body);cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.game{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:20px;align-items:start}
+@media (max-width:900px){.game{grid-template-columns:minmax(0,1fr)}}
+
+.board{min-width:0;display:flex;flex-direction:column;gap:10px}
+.statusline{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.statusline strong{font:800 20px var(--display)}
+.statusline span{color:var(--muted);font-size:14px}
+.frame{position:relative;border-radius:12px;overflow:hidden;line-height:0;cursor:crosshair;touch-action:manipulation;background:#223;box-shadow:0 1px 0 var(--line),0 10px 30px -18px rgba(0,0,0,.5)}
+.frame canvas{display:block;width:100%;height:auto;max-width:100%}
+#ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.lens{position:absolute;width:180px;height:180px;border-radius:50%;overflow:hidden;pointer-events:none;border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.35),0 10px 26px rgba(0,0,0,.4)}
+.lens canvas{width:100%;height:100%}
+.tip{margin:0;color:var(--muted);font-size:13.5px}
+
+.result{padding:14px 16px;border-radius:10px;background:var(--accent-soft);border:1px solid var(--accent)}
+.result h2{margin:0 0 4px;font:800 19px var(--display)}
+.result p{margin:0}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column}
+.sec{padding:16px;display:flex;flex-direction:column;gap:12px}
+.sec + .sec{border-top:1px solid var(--line)}
+.label{font:700 11.5px var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat .v{font:700 22px var(--mono);font-variant-numeric:tabular-nums}
+.stat .k{font-size:12.5px;color:var(--muted)}
+.best{margin:0;font-size:13px;color:var(--muted)}
+
+.tier{display:flex;flex-direction:column;gap:6px}
+.tier-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px}
+.tier-head b{font:700 14px var(--mono);font-variant-numeric:tabular-nums}
+.bar{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.chips{display:flex;flex-wrap:wrap;gap:5px;min-height:26px}
+.chip{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font:700 14px var(--mono);border:1px dashed var(--line);color:var(--muted)}
+.chip.on{border:1px solid var(--accent);background:var(--accent-soft);color:var(--ink)}
+
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.actions .btn{flex:1 1 120px}
+
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.form input{font:700 18px var(--mono);padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);width:100%;min-width:0;box-sizing:border-box}
+.form .btn{grid-column:1/-1}
+
+.how{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:14px;color:var(--muted)}
+.how b{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+
+<div class="page">
+  <header class="top">
+    <div class="brand">
+      <span class="ghost" aria-hidden="true">7</span>
+      <h1>Hidden Numbers</h1>
+      <p class="meta">Puzzle <b id="pno">No. 00000</b> · <span id="scene">Loading picture</span> · digits 1 to 9</p>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Difficulty">
+        <button type="button" id="d-easy" data-diff="easy" aria-pressed="false">Easy</button>
+        <button type="button" id="d-medium" data-diff="medium" aria-pressed="true">Medium</button>
+        <button type="button" id="d-hard" data-diff="hard" aria-pressed="false">Hard</button>
+      </div>
+      <div class="seg" role="group" aria-label="Play mode">
+        <button type="button" id="m-find" data-mode="find" aria-pressed="true">Tap to find</button>
+        <button type="button" id="m-count" data-mode="count" aria-pressed="false">Count only</button>
+      </div>
+      <button type="button" class="btn primary" id="newBtn">New puzzle</button>
+    </div>
+  </header>
+
+  <div class="game">
+    <section class="board">
+      <div class="statusline">
+        <strong id="status" aria-live="polite">Found 0 of 12</strong>
+        <span id="substatus">Tap each number you spot.</span>
+      </div>
+      <div class="frame" id="frame">
+        <canvas id="pic" width="1200" height="900" aria-label="Puzzle picture with hidden numbers"></canvas>
+        <canvas id="ov" width="1200" height="900" aria-hidden="true"></canvas>
+        <div class="lens" id="lens" hidden><canvas id="lensc" width="360" height="360"></canvas></div>
+      </div>
+      <p class="tip" id="tip">Big faded digits are the easiest to miss. Check tree tops, roofs, rocks, clouds, the river and the open sky.</p>
+      <div class="result" id="result" hidden>
+        <h2 id="resTitle">Solved</h2>
+        <p id="resText"></p>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="sec">
+        <p class="label">This round</p>
+        <div class="stats">
+          <div class="stat"><span class="v" id="time">0:00</span><span class="k">Time</span></div>
+          <div class="stat"><span class="v" id="misses">0</span><span class="k">Misses</span></div>
+          <div class="stat"><span class="v" id="hints">0</span><span class="k">Hints</span></div>
+        </div>
+        <p class="best" id="best">No best time on Medium yet.</p>
+      </div>
+
+      <div class="sec" id="progressSec">
+        <p class="label">Progress</p>
+        <div class="tier"><div class="tier-head"><span>Easy to spot</span><b id="t0n">0 / 0</b></div><div class="bar"><i id="t0b"></i></div><div class="chips" id="t0c"></div></div>
+        <div class="tier"><div class="tier-head"><span>Tricky</span><b id="t1n">0 / 0</b></div><div class="bar"><i id="t1b"></i></div><div class="chips" id="t1c"></div></div>
+        <div class="tier"><div class="tier-head"><span>Well hidden</span><b id="t2n">0 / 0</b></div><div class="bar"><i id="t2b"></i></div><div class="chips" id="t2c"></div></div>
+      </div>
+
+      <div class="sec" id="countSec" hidden>
+        <p class="label">Your answer</p>
+        <form class="form" id="countForm" novalidate>
+          <label for="countIn">How many numbers?<input id="countIn" type="number" min="0" max="40" inputmode="numeric" placeholder="0"></label>
+          <label for="sumIn">Their sum (optional)<input id="sumIn" type="number" min="0" max="400" inputmode="numeric" placeholder="0"></label>
+          <button type="submit" class="btn primary" id="checkBtn">Check my count</button>
+        </form>
+      </div>
+
+      <div class="sec">
+        <div class="actions">
+          <button type="button" class="btn" id="hintBtn">Hint</button>
+          <button type="button" class="btn" id="revealBtn">Show answers</button>
+          <button type="button" class="btn" id="lensBtn" aria-pressed="false" hidden>Magnifier: off</button>
+        </div>
+      </div>
+
+      <div class="sec">
+        <p class="label">How to play</p>
+        <ul class="how">
+          <li>Every number is a single digit from <b>1 to 9</b>.</li>
+          <li>Some are bold. Some are tilted and faded. Some take the colour of whatever they sit on.</li>
+          <li><b>Tap to find</b>: tap a number to ring it. Wrong taps count as misses.</li>
+          <li><b>Count only</b>: no tapping. Count them by eye, enter your total, then check.</li>
+          <li>Each puzzle number gives the same picture every time, so you can share it.</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>
+
+
+<footer class="foot">Free to play. Share a puzzle by copying the link from your address bar. <a href="../">kishorekanna007.github.io</a></footer>
+<script>
+(function(){
+const W=1200,H=900;
+const $=id=>document.getElementById(id);
+const base=$('pic'), bctx=base.getContext('2d',{willReadFrequently:true});
+const ov=$('ov'), octx=ov.getContext('2d');
+const lens=$('lens'), lctx=$('lensc').getContext('2d');
+
+const CFG={
+  easy:{counts:[5,2,1],d:.15,label:'Easy'},
+  medium:{counts:[5,4,3],d:.10,label:'Medium'},
+  hard:{counts:[4,6,6],d:.068,label:'Hard'}
+};
+
+const PALS=[
+{name:'Summer valley',sky:['#6DBDEB','#D4EEF8'],sun:'#FFE38A',sunLow:false,cloud:'#FFFFFF',mtn:['#9AB0C2','#B5C6D3'],hills:['#86BC67','#6CA853','#55913F'],water:'#4FA0C6',waterHi:'#A9DCEF',trunk:'#6B4A2E',leaves:['#3F7D34','#58993F','#2F6A2A','#6BAA4A'],pine:['#2E5E3A','#3B7146'],rock:['#9C9892','#7E7A74','#BAB6AF'],walls:['#E9C46A','#DDE5E0','#F1A97A'],roof:['#B5483B','#5C4B8A','#3D5A80'],win:'#CFE8F5',flowers:['#F25F5C','#FFE066','#FAFAFA','#C77DFF'],grass:['#3E7F33','#4E9440','#2F6B28'],bird:'#2B3440'},
+{name:'Valley at dusk',sky:['#2F3470','#F2A06F'],sun:'#FFC27A',sunLow:true,cloud:'#F4B9A6',mtn:['#57497A','#776290'],hills:['#5F6C40','#4D5A33','#3C4729'],water:'#6E7EB2',waterHi:'#E9B59C',trunk:'#45311F',leaves:['#4E6B33','#63813F','#3B5527','#748F48'],pine:['#2C432E','#38533A'],rock:['#7B6F7A','#5F5561','#978A94'],walls:['#D9A066','#C8B6A5'],roof:['#7A2E3A','#3E3A6B'],win:'#FFD98A',flowers:['#FF8FAB','#FFD166','#FFFFFF'],grass:['#435229','#55663A','#33401F'],bird:'#1E1A2E'},
+{name:'Autumn valley',sky:['#93BDD6','#EDE3CC'],sun:'#FFF1B8',sunLow:false,cloud:'#FBF8F0',mtn:['#9D8F80','#BAAD9B'],hills:['#CDA94A','#B58C38','#916D2C'],water:'#5A93A9',waterHi:'#BFE0E6',trunk:'#5A3D27',leaves:['#D9622B','#E89B2D','#B8432A','#C9A227'],pine:['#3D5B3A','#4E6D45'],rock:['#908C86','#716D68','#AAA59E'],walls:['#E7D3B0','#B9D3C2'],roof:['#7B3F2A','#2F4858'],win:'#D6E9F0',flowers:['#FFFFFF','#E63946','#F4A261'],grass:['#7E6A2C','#937D35','#6A5824'],bird:'#3A2F25'}
+];
+
+const FACES=[
+  {f:'"Bricolage Grotesque", "Arial Black", sans-serif',w:[800,400]},
+  {f:'"Atkinson Hyperlegible", Verdana, sans-serif',w:[700,400]},
+  {f:'Georgia, "Times New Roman", serif',w:[700,400]},
+  {f:'"JetBrains Mono", "Courier New", monospace',w:[700,500]}
+];
+const PLAIN=['#D7263D','#1B4079','#F4D35E','#FFFFFF','#22252F','#7B2CBF','#FF7A00'];
+
+/* ---------- helpers ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+let R=Math.random;
+const rint=n=>Math.floor(R()*n);
+const pick=a=>a[rint(a.length)];
+function hex2rgb(h){h=h.replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]}
+function lumHex(h){const[r,g,b]=hex2rgb(h);return(.299*r+.587*g+.114*b)/255}
+function rgb2hsl(r,g,b){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let h=0,s=0;const l=(mx+mn)/2;
+  if(mx!==mn){const d=mx-mn;s=l>.5?d/(2-mx-mn):d/(mx+mn);
+    if(mx===r)h=(g-b)/d+(g<b?6:0);else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;h*=60}
+  return[h,s,l]}
+function hsl(h,s,l){h=((h%360)+360)%360;s=Math.max(0,Math.min(1,s));l=Math.max(0,Math.min(1,l));return'hsl('+h.toFixed(1)+', '+(s*100).toFixed(1)+'%, '+(l*100).toFixed(1)+'%)'}
+function shade(hex,dl){const[h,s,l]=rgb2hsl(...hex2rgb(hex));return hsl(h,s,l+dl)}
+function hexA(hex,a){const[r,g,b]=hex2rgb(hex);return'rgba('+r+','+g+','+b+','+a+')'}
+function circle(c,x,y,r,col){c.beginPath();c.arc(x,y,Math.max(.5,r),0,Math.PI*2);c.fillStyle=col;c.fill()}
+function fmt(ms){const s=Math.max(0,Math.floor(ms/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
+
+/* ---------- scene ---------- */
+let riverPts=[];
+function nearRiver(x,y,m){return riverPts.some(p=>Math.hypot(p.x-x,p.y-y)<p.w+m)}
+
+function cloud(c,x,y,s,col){
+  const n=4+rint(3);
+  for(let i=0;i<n;i++){
+    const cx=x+(i-(n-1)/2)*36*s+(R()-.5)*10*s;
+    const cy=y+(R()-.5)*12*s-((i>0&&i<n-1)?14*s:0);
+    circle(c,cx,cy,(24+R()*20)*s,col);
+  }
+}
+function bird(c,x,y,s,col){
+  c.save();c.strokeStyle=col;c.globalAlpha=.75;c.lineWidth=2.2*s;c.lineCap='round';
+  c.beginPath();c.moveTo(x-11*s,y);c.quadraticCurveTo(x-5*s,y-7*s,x,y);c.quadraticCurveTo(x+5*s,y-7*s,x+11*s,y);c.stroke();c.restore();
+}
+function ridge(c,baseY,amp,step,col){
+  c.beginPath();c.moveTo(0,H);let x=0;c.lineTo(0,baseY-R()*amp);
+  while(x<W){x+=step*(.6+R()*.8);c.lineTo(Math.min(x,W+40),baseY-R()*amp)}
+  c.lineTo(W,H);c.closePath();c.fillStyle=col;c.fill();
+}
+function hill(c,base,amp,col){
+  const f1=.002+R()*.004,f2=.008+R()*.008,p1=R()*6.28,p2=R()*6.28;
+  c.beginPath();c.moveTo(0,H);
+  for(let x=0;x<=W;x+=10)c.lineTo(x,base+Math.sin(x*f1+p1)*amp+Math.sin(x*f2+p2)*amp*.3);
+  c.lineTo(W,H);c.closePath();c.fillStyle=col;c.fill();
+}
+function bez(p0,p1,p2,p3,t){const u=1-t;return{x:u*u*u*p0.x+3*u*u*t*p1.x+3*u*t*t*p2.x+t*t*t*p3.x,y:u*u*u*p0.y+3*u*u*t*p1.y+3*u*t*t*p2.y+t*t*t*p3.y}}
+function river(c,hz,P){
+  riverPts=[];
+  const p0={x:300+R()*600,y:hz+48},p3={x:100+R()*1000,y:H+30};
+  const p1={x:p0.x+(R()-.5)*500,y:p0.y+120},p2={x:p3.x+(R()-.5)*500,y:p3.y-220};
+  const L=[],Rt=[];
+  for(let i=0;i<=60;i++){
+    const t=i/60,a=bez(p0,p1,p2,p3,t),q0=bez(p0,p1,p2,p3,Math.max(0,t-.01)),q1=bez(p0,p1,p2,p3,Math.min(1,t+.01));
+    let dx=q1.x-q0.x,dy=q1.y-q0.y;const m=Math.hypot(dx,dy)||1;dx/=m;dy/=m;
+    const w=6+t*t*115+t*18;
+    L.push({x:a.x-dy*w,y:a.y+dx*w});Rt.push({x:a.x+dy*w,y:a.y-dx*w});
+    riverPts.push({x:a.x,y:a.y,w,dx,dy});
+  }
+  c.beginPath();c.moveTo(L[0].x,L[0].y);L.forEach(p=>c.lineTo(p.x,p.y));for(let i=Rt.length-1;i>=0;i--)c.lineTo(Rt[i].x,Rt[i].y);c.closePath();
+  c.lineWidth=7;c.strokeStyle=shade(P.hills[2],-.12);c.stroke();c.fillStyle=P.water;c.fill();
+  c.save();c.strokeStyle=P.waterHi;c.lineCap='round';
+  for(let i=0;i<18;i++){
+    const p=riverPts[8+rint(50)];const len=p.w*(.3+R()*.5);const off=(R()-.5)*p.w;
+    const cx=p.x-p.dy*off,cy=p.y+p.dx*off;
+    c.globalAlpha=.45+R()*.35;c.lineWidth=1.5+R()*2.5;
+    c.beginPath();c.moveTo(cx-p.dx*len/2,cy-p.dy*len/2);c.lineTo(cx+p.dx*len/2,cy+p.dy*len/2);c.stroke();
+  }
+  c.restore();
+}
+function shadow(c,x,y,rx,ry){c.save();c.fillStyle='rgba(0,0,0,.16)';c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();c.restore()}
+function tree(c,x,y,s,P){
+  shadow(c,x,y,40*s,9*s);
+  c.fillStyle=P.trunk;c.fillRect(x-7*s,y-78*s,14*s,78*s);
+  const cy=y-98*s,n=7+rint(4);
+  for(let i=0;i<n;i++){const a=R()*6.28,d=R()*28*s;circle(c,x+Math.cos(a)*d*1.25,cy+Math.sin(a)*d*.8,(25+R()*18)*s,pick(P.leaves))}
+}
+function pine(c,x,y,s,P){
+  shadow(c,x,y,28*s,7*s);
+  c.fillStyle=P.trunk;c.fillRect(x-5*s,y-26*s,10*s,26*s);
+  for(let i=0;i<3;i++){
+    const by=y-20*s-i*30*s,hw=(38-i*9)*s;
+    c.beginPath();c.moveTo(x-hw,by);c.lineTo(x,by-56*s);c.lineTo(x+hw,by);c.closePath();c.fillStyle=P.pine[i%2];c.fill();
+  }
+}
+function bush(c,x,y,s,P){
+  shadow(c,x,y,32*s,7*s);
+  const n=4+rint(3);
+  for(let i=0;i<n;i++)circle(c,x+(i-(n-1)/2)*15*s,y-14*s-(R()*10*s),(15+R()*11)*s,pick(P.leaves));
+}
+function rock(c,x,y,s,P){
+  const rx=(40+R()*30)*s,ry=(24+R()*16)*s,cy=y-ry*.85,col=pick(P.rock);
+  shadow(c,x,y,rx*1.05,8*s);
+  const pts=[];for(let i=0;i<9;i++){const a=i/9*Math.PI*2;const j=.8+R()*.3;let py=cy+Math.sin(a)*ry*j;if(py>y)py=y;pts.push([x+Math.cos(a)*rx*j,py])}
+  c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.closePath();c.fillStyle=col;c.fill();
+  c.save();c.globalAlpha=.55;c.beginPath();
+  pts.forEach((p,i)=>{const px=x-rx*.2+(p[0]-x)*.55,py=cy-ry*.28+(p[1]-cy)*.55;i?c.lineTo(px,py):c.moveTo(px,py)});
+  c.closePath();c.fillStyle=shade(col,.1);c.fill();c.restore();
+}
+function house(c,x,y,s,P){
+  const w=170*s,h=105*s,wall=pick(P.walls),roof=pick(P.roof);
+  shadow(c,x,y,w*.6,10*s);
+  c.fillStyle=wall;c.fillRect(x-w/2,y-h,w,h);
+  c.fillStyle=shade(roof,-.12);c.fillRect(x+w*.2,y-h-68*s,18*s,46*s);
+  c.beginPath();c.moveTo(x-w/2-14*s,y-h+2);c.lineTo(x,y-h-78*s);c.lineTo(x+w/2+14*s,y-h+2);c.closePath();c.fillStyle=roof;c.fill();
+  c.fillStyle=shade(roof,-.18);c.fillRect(x-14*s,y-50*s,28*s,50*s);
+  [x-w*.32,x+w*.32].forEach(wx=>{
+    c.fillStyle=P.win;c.fillRect(wx-15*s,y-h+26*s,30*s,30*s);
+    c.strokeStyle=shade(wall,-.35);c.lineWidth=2.5*s;c.strokeRect(wx-15*s,y-h+26*s,30*s,30*s);
+    c.beginPath();c.moveTo(wx,y-h+26*s);c.lineTo(wx,y-h+56*s);c.moveTo(wx-15*s,y-h+41*s);c.lineTo(wx+15*s,y-h+41*s);c.stroke();
+  });
+}
+function flower(c,x,y,s,P){
+  c.strokeStyle=P.grass[1];c.lineWidth=1.5;c.beginPath();c.moveTo(x,y);c.lineTo(x+(R()-.5)*4,y+14*s);c.stroke();
+  const col=pick(P.flowers),pr=3.4*s;
+  for(let i=0;i<5;i++){const a=i/5*Math.PI*2;circle(c,x+Math.cos(a)*pr*1.2,y+Math.sin(a)*pr*1.2,pr,col)}
+  circle(c,x,y,pr*.8,'#F2C94C');
+}
+
+function drawScene(c,P){
+  const hz=360+R()*70;
+  const g=c.createLinearGradient(0,0,0,hz+40);g.addColorStop(0,P.sky[0]);g.addColorStop(1,P.sky[1]);c.fillStyle=g;c.fillRect(0,0,W,H);
+  const sx=120+R()*960,sy=P.sunLow?hz-70-R()*60:80+R()*110,sr=P.sunLow?70+R()*20:42+R()*18;
+  const gl=c.createRadialGradient(sx,sy,sr*.6,sx,sy,sr*3.2);gl.addColorStop(0,hexA(P.sun,.5));gl.addColorStop(1,hexA(P.sun,0));c.fillStyle=gl;c.fillRect(0,0,W,H);
+  circle(c,sx,sy,sr,P.sun);
+  const nc=3+rint(3);for(let i=0;i<nc;i++)cloud(c,70+R()*(W-140),55+R()*(hz-190),.7+R()*.7,P.cloud);
+  const nb=2+rint(4);for(let i=0;i<nb;i++)bird(c,60+R()*(W-120),50+R()*(hz-170),.8+R()*.6,P.bird);
+  ridge(c,hz-40,150,110,P.mtn[0]);ridge(c,hz+5,90,80,P.mtn[1]);
+  hill(c,hz+20,26,P.hills[0]);hill(c,hz+120,24,P.hills[1]);hill(c,hz+250,18,P.hills[2]);
+  riverPts=[];if(R()<.7)river(c,hz,P);
+
+  const objs=[],want=[['tree',6+rint(5)],['pine',3+rint(4)],['bush',4+rint(4)],['rock',3+rint(4)]];
+  if(R()<.85)want.unshift(['house',1]);
+  const RAD={house:100,tree:46,pine:34,bush:30,rock:44};
+  for(const[type,cnt]of want)for(let k=0;k<cnt;k++)for(let a=0;a<60;a++){
+    const y=hz+60+R()*(H-hz-80),x=40+R()*(W-80),s=.45+(y-hz)/(H-hz)*.85,rad=RAD[type]*s;
+    if(nearRiver(x,y,rad*.7+10))continue;
+    if(objs.some(o=>Math.hypot(o.x-x,o.y-y)<(o.rad+rad)*.8))continue;
+    objs.push({type,x,y,s,rad});break;
+  }
+  objs.sort((a,b)=>a.y-b.y).forEach(o=>({tree,pine,bush,rock,house})[o.type](c,o.x,o.y,o.s,P));
+
+  c.save();c.lineCap='round';
+  for(let i=0;i<900;i++){
+    const y=hz+80+R()*(H-hz-80),x=R()*W;if(nearRiver(x,y,2))continue;
+    const s=.4+(y-hz)/(H-hz),len=(6+R()*10)*s;
+    c.strokeStyle=pick(P.grass);c.globalAlpha=.55;c.lineWidth=(1.2+R()*1.2)*s;
+    c.beginPath();c.moveTo(x,y);c.lineTo(x+(R()-.5)*6*s,y-len);c.stroke();
+  }
+  c.restore();
+  for(let i=0;i<45;i++){const y=H*.74+R()*(H*.24),x=20+R()*(W-40);if(nearRiver(x,y,8))continue;flower(c,x,y,.8+R()*.6,P)}
+  return hz;
+}
+
+/* ---------- numbers ---------- */
+function sampleBox(d,cx,cy,w,h){
+  let sr=0,sg=0,sb=0,sl=0,sl2=0,n=0;
+  const x0=Math.max(0,Math.round(cx-w/2)),x1=Math.min(W-1,Math.round(cx+w/2)),y0=Math.max(0,Math.round(cy-h/2)),y1=Math.min(H-1,Math.round(cy+h/2));
+  for(let y=y0;y<=y1;y+=3)for(let x=x0;x<=x1;x+=3){const i=(y*W+x)*4,r=d[i],g=d[i+1],b=d[i+2];sr+=r;sg+=g;sb+=b;const L=(.299*r+.587*g+.114*b)/255;sl+=L;sl2+=L*L;n++}
+  const m=sl/n;return{r:sr/n,g:sg/n,b:sb/n,lum:m,std:Math.sqrt(Math.max(0,sl2/n-m*m))};
+}
+function placeNumbers(c,cfg){
+  const data=c.getImageData(0,0,W,H).data,nums=[],plan=[];
+  cfg.counts.forEach((cnt,t)=>{for(let i=0;i<cnt;i++)plan.push(t)});
+  plan.sort((a,b)=>b-a);
+  for(const tier of plan){
+    for(let a=0;a<450;a++){
+      const size=tier===0?56+R()*30:tier===1?38+R()*22:30+R()*52;
+      const rad=size*.55,x=55+R()*(W-110),y=55+R()*(H-110);
+      if(nums.some(n=>Math.hypot(n.x-x,n.y-y)<n.r+rad+20))continue;
+      const s=sampleBox(data,x,y,size*.8,size*.95);
+      if(tier===2&&a<280&&s.std>.09)continue;
+      if(tier===1&&a<280&&s.std>.16)continue;
+      const digit=1+rint(9),face=pick(FACES);
+      const rot=tier===0?(R()-.5)*.5:tier===1?(R()-.5)*1.4:(R()-.5)*2.4;
+      const wgt=tier===0?face.w[0]:face.w[rint(2)];
+      c.save();c.translate(x,y);c.rotate(rot);
+      c.font=wgt+' '+Math.round(size)+'px '+face.f;c.textAlign='center';c.textBaseline='middle';
+      const ty=size*.04;
+      if(tier===0){
+        const opts=PLAIN.filter(h=>Math.abs(lumHex(h)-s.lum)>.4);
+        const fill=pick(opts.length?opts:PLAIN);
+        c.lineJoin='round';c.lineWidth=size*.12;c.strokeStyle=lumHex(fill)>.5?'rgba(20,20,24,.85)':'rgba(255,255,255,.9)';
+        c.strokeText(String(digit),0,ty);c.fillStyle=fill;c.fillText(String(digit),0,ty);
+      }else{
+        const[h,sat,l]=rgb2hsl(s.r,s.g,s.b);
+        const dl=tier===1?.2+R()*.08:cfg.d*(.85+R()*.3);
+        const dh=tier===1?(R()-.5)*60:(R()-.5)*16;
+        c.globalAlpha=tier===1?.9:1;
+        c.fillStyle=hsl(h+dh,tier===1?sat+.1:sat,l>.5?l-dl:l+dl);
+        c.fillText(String(digit),0,ty);
+      }
+      c.restore();
+      nums.push({x,y,r:Math.max(rad,22),digit,tier,found:false,revealed:false});
+      break;
+    }
+  }
+  return nums;
+}
+function texture(c,P,hz,seed){
+  c.save();
+  for(let i=0;i<380;i++){
+    const y=hz+R()*(H-hz),x=R()*W;
+    c.globalAlpha=.4;c.fillStyle=pick(R()<.5?P.leaves:P.grass);
+    c.beginPath();c.ellipse(x,y,1.5+R()*3,1+R()*2,R()*3,0,Math.PI*2);c.fill();
+  }
+  c.restore();
+  const img=c.getImageData(0,0,W,H),d=img.data;let s=(seed*2654435761)>>>0||1;
+  for(let i=0;i<d.length;i+=4){s^=s<<13;s^=s>>>17;s^=s<<5;const n=((s>>>0)%17)-8;d[i]+=n;d[i+1]+=n;d[i+2]+=n}
+  c.putImageData(img,0,0);
+}
+
+/* ---------- game state ---------- */
+const S={seed:0,diff:'medium',mode:'find',nums:[],found:0,misses:0,hints:0,t0:0,tEnd:0,done:false,hint:null,missMarks:[],lens:false,hashSelf:''};
+
+function generate(seed,diff){
+  S.seed=seed;S.diff=diff;
+  R=mulberry32(seed);
+  const P=PALS[rint(PALS.length)];
+  const hz=drawScene(bctx,P);
+  R=mulberry32(seed^0x9E3779B9);
+  S.nums=placeNumbers(bctx,CFG[diff]);
+  R=mulberry32(seed+77);
+  texture(bctx,P,hz,seed);
+  $('pno').textContent='No. '+seed;
+  $('scene').textContent=P.name;
+  document.querySelectorAll('[data-diff]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.diff===diff)));
+  const h='p'+seed+'-'+diff;S.hashSelf=h;
+  try{if(location.hash.slice(1)!==h)location.hash=h}catch(e){}
+  resetProgress();
+}
+function resetProgress(){
+  S.nums.forEach(n=>{n.found=false;n.revealed=false});
+  S.found=0;S.misses=0;S.hints=0;S.done=false;S.hint=null;S.missMarks=[];S.t0=performance.now();S.tEnd=0;
+  $('result').hidden=true;$('countIn').value='';$('sumIn').value='';
+  drawOverlay();updateUI();
+}
+
+function ring(c,n,col,dashed){
+  c.save();c.beginPath();c.arc(n.x,n.y,n.r+10,0,Math.PI*2);
+  if(dashed)c.setLineDash([12,8]);
+  c.lineWidth=10;c.strokeStyle='rgba(0,0,0,.45)';c.stroke();
+  c.lineWidth=5;c.strokeStyle=col;c.stroke();c.restore();
+}
+function drawOverlay(){
+  const c=octx,now=performance.now();c.clearRect(0,0,W,H);
+  S.nums.forEach(n=>{if(n.found)ring(c,n,'#F2B33D',false);else if(n.revealed)ring(c,n,'#2EE6D6',true)});
+  S.missMarks=S.missMarks.filter(m=>now-m.t<900);
+  S.missMarks.forEach(m=>{const a=1-(now-m.t)/900;c.save();c.globalAlpha=a;c.lineCap='round';
+    [[10,'rgba(0,0,0,.5)'],[5,'#FF4D6A']].forEach(([lw,col])=>{c.lineWidth=lw;c.strokeStyle=col;c.beginPath();c.moveTo(m.x-16,m.y-16);c.lineTo(m.x+16,m.y+16);c.moveTo(m.x+16,m.y-16);c.lineTo(m.x-16,m.y+16);c.stroke()});c.restore()});
+  if(S.hint&&now<S.hint.until){c.save();c.setLineDash([16,12]);c.beginPath();c.arc(S.hint.x,S.hint.y,S.hint.R,0,Math.PI*2);
+    c.lineWidth=10;c.strokeStyle='rgba(0,0,0,.4)';c.stroke();c.lineWidth=5;c.strokeStyle='#FFFFFF';c.stroke();c.restore()}
+}
+
+function tierTotals(){const t=[0,0,0],f=[0,0,0];S.nums.forEach(n=>{t[n.tier]++;if(n.found)f[n.tier]++});return{t,f}}
+function updateUI(){
+  const total=S.nums.length,{t,f}=tierTotals(),find=S.mode==='find';
+  $('status').textContent=find?('Found '+S.found+' of '+total):'Count every number';
+  $('substatus').textContent=S.done?'Round over. Start a new puzzle or switch difficulty.':find?'Tap each number you spot.':'No tapping in this mode. Enter your total on the right.';
+  for(let i=0;i<3;i++){
+    $('t'+i+'n').textContent=f[i]+' / '+t[i];
+    $('t'+i+'b').style.width=(t[i]?f[i]/t[i]*100:0)+'%';
+    const box=$('t'+i+'c');box.textContent='';
+    S.nums.filter(n=>n.tier===i).forEach(n=>{const el=document.createElement('span');el.className='chip'+(n.found?' on':'');el.textContent=n.found?n.digit:'?';box.appendChild(el)});
+  }
+  $('progressSec').hidden=!find;
+  $('countSec').hidden=find;
+  $('misses').textContent=S.misses;$('hints').textContent=S.hints;
+  $('hintBtn').disabled=S.done||!find;
+  $('revealBtn').disabled=S.done;
+  $('checkBtn').disabled=S.done;
+  document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===S.mode)));
+  const b=getBest(S.diff);
+  $('best').textContent=b?('Best on '+CFG[S.diff].label+': '+fmt(b)):('No best time on '+CFG[S.diff].label+' yet.');
+  $('time').textContent=fmt((S.done?S.tEnd:performance.now())-S.t0);
+}
+function getBest(d){try{const v=localStorage.getItem('hn-best-'+d);return v?+v:0}catch(e){return 0}}
+function setBest(d,ms){try{localStorage.setItem('hn-best-'+d,String(ms))}catch(e){}}
+
+function sum(){return S.nums.reduce((a,n)=>a+n.digit,0)}
+function finish(kind,extra){
+  S.done=true;S.tEnd=performance.now();const ms=S.tEnd-S.t0,total=S.nums.length;
+  const {t}=tierTotals();
+  let title,text;
+  if(kind==='solved'){
+    const prev=getBest(S.diff),rec=!prev||ms<prev;if(rec)setBest(S.diff,ms);
+    title=rec?'Solved. New best time.':'Solved';
+    text='All '+total+' found in '+fmt(ms)+' with '+S.misses+' '+(S.misses===1?'miss':'misses')+' and '+S.hints+' '+(S.hints===1?'hint':'hints')+'. The numbers add up to '+sum()+'.';
+  }else if(kind==='revealed'){
+    title='Answers shown';
+    text=S.mode==='find'
+      ?'You found '+S.found+' of '+total+'. The dashed teal rings mark the '+(total-S.found)+' you missed. All the numbers add up to '+sum()+'.'
+      :'The picture holds '+total+' numbers: '+t[0]+' easy to spot, '+t[1]+' tricky, '+t[2]+' well hidden. They add up to '+sum()+'.';
+  }else{
+    const {count,sm}=extra;
+    title=count===total?'Correct count':'Not quite';
+    text='You counted '+count+'. The picture holds '+total+' ('+t[0]+' easy to spot, '+t[1]+' tricky, '+t[2]+' well hidden).';
+    if(sm!==null)text+=' Your sum: '+sm+'. Actual sum: '+sum()+'.';
+    else text+=' They add up to '+sum()+'.';
+    text+=' Teal rings show where each one sits.';
+  }
+  $('resTitle').textContent=title;$('resText').textContent=text;$('result').hidden=false;
+  drawOverlay();updateUI();
+}
+
+/* ---------- input ---------- */
+const frame=$('frame');
+function toCanvas(e){const r=base.getBoundingClientRect(),k=W/r.width;return{x:(e.clientX-r.left)*k,y:(e.clientY-r.top)*k,k,r}}
+frame.addEventListener('click',e=>{
+  if(S.done||S.mode!=='find')return;
+  const p=toCanvas(e),tol=14*p.k;let best=null,bd=1e9;
+  S.nums.forEach(n=>{if(n.found)return;const d=Math.hypot(n.x-p.x,n.y-p.y);if(d<=n.r+tol&&d<bd){best=n;bd=d}});
+  if(best){best.found=true;S.found++;if(S.hint)S.hint=null;
+    if(S.found===S.nums.length){finish('solved');return}}
+  else if(!S.nums.some(n=>n.found&&Math.hypot(n.x-p.x,n.y-p.y)<=n.r+tol)){
+    S.misses++;S.missMarks.push({x:p.x,y:p.y,t:performance.now()});
+    const tick=()=>{drawOverlay();if(S.missMarks.length)requestAnimationFrame(tick)};requestAnimationFrame(tick);
+  }
+  drawOverlay();updateUI();
+});
+
+$('hintBtn').addEventListener('click',()=>{
+  if(S.done)return;const left=S.nums.filter(n=>!n.found);if(!left.length)return;
+  const n=left[Math.floor(Math.random()*left.length)],Rr=170,a=Math.random()*6.28,d=Math.random()*Rr*.55;
+  S.hint={x:n.x+Math.cos(a)*d,y:n.y+Math.sin(a)*d,R:Rr,until:performance.now()+2600};S.hints++;
+  drawOverlay();updateUI();setTimeout(drawOverlay,2650);
+});
+$('revealBtn').addEventListener('click',()=>{if(S.done)return;S.nums.forEach(n=>{if(!n.found)n.revealed=true});finish('revealed')});
+$('countForm').addEventListener('submit',e=>{
+  e.preventDefault();if(S.done)return;
+  const cv=$('countIn').value.trim();
+  if(cv===''){$('countIn').focus();$('substatus').textContent='Enter how many numbers you counted first.';return}
+  const sv=$('sumIn').value.trim();
+  S.nums.forEach(n=>n.revealed=true);
+  finish('count',{count:parseInt(cv,10),sm:sv===''?null:parseInt(sv,10)});
+});
+document.querySelectorAll('[data-diff]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.diff!==S.diff)generate(newSeed(),b.dataset.diff)}));
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.mode!==S.mode){S.mode=b.dataset.mode;resetProgress()}}));
+$('newBtn').addEventListener('click',()=>generate(newSeed(),S.diff));
+function newSeed(){return 10000+Math.floor(Math.random()*90000)}
+
+/* magnifier: mouse only */
+const canHover=window.matchMedia&&matchMedia('(hover:hover) and (pointer:fine)').matches;
+if(canHover)$('lensBtn').hidden=false;
+$('lensBtn').addEventListener('click',()=>{S.lens=!S.lens;$('lensBtn').setAttribute('aria-pressed',String(S.lens));$('lensBtn').textContent='Magnifier: '+(S.lens?'on':'off');if(!S.lens)lens.hidden=true});
+frame.addEventListener('pointermove',e=>{
+  if(!S.lens||e.pointerType!=='mouse')return;
+  const p=toCanvas(e),size=180,zoom=2.6,src=size*p.k/zoom;
+  lens.hidden=false;lens.style.left=(e.clientX-p.r.left-size/2)+'px';lens.style.top=(e.clientY-p.r.top-size/2)+'px';
+  lctx.fillStyle='#000';lctx.fillRect(0,0,360,360);
+  lctx.drawImage(base,p.x-src/2,p.y-src/2,src,src,0,0,360,360);
+  lctx.drawImage(ov,p.x-src/2,p.y-src/2,src,src,0,0,360,360);
+});
+frame.addEventListener('pointerleave',()=>{lens.hidden=true});
+
+setInterval(()=>{if(!S.done&&S.t0)$('time').textContent=fmt(performance.now()-S.t0)},500);
+
+function parseHash(){const m=/^#p(\d{1,7})-(easy|medium|hard)$/.exec(location.hash||'');return m?{seed:+m[1],diff:m[2]}:null}
+window.addEventListener('hashchange',()=>{const m=parseHash();if(m&&location.hash.slice(1)!==S.hashSelf)generate(m.seed,m.diff)});
+
+async function boot(){
+  try{
+    await Promise.race([
+      Promise.all(['800 40px "Bricolage Grotesque"','400 40px "Bricolage Grotesque"','700 40px "Atkinson Hyperlegible"','400 40px "Atkinson Hyperlegible"','700 40px "JetBrains Mono"','500 40px "JetBrains Mono"'].map(f=>document.fonts.load(f))),
+      new Promise(r=>setTimeout(r,2500))
+    ]);
+  }catch(e){}
+  const m=parseHash();
+  generate(m?m.seed:newSeed(),m?m.diff:'medium');
+}
+boot();
+})();
+</script>
+
+</body>
+</html>
